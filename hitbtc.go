@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -41,40 +42,42 @@ type Currency struct {
 	PayoutFee          string `json:"payoutFee"`
 }
 
-func (c *Client) Symbols() (interface{}, error) {
+func (c *Client) Symbols() ([]Symbol, error) {
 	req, err := c.newRequest("GET", "public/symbol", nil)
 
 	if err != nil {
 		return nil, err
 	}
 	var res []Symbol
-	resp, err := c.do(req, res)
+	body, err := c.do(req)
+	err = json.Unmarshal(body, &res)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return resp, err
+	return res, err
 }
 
-func (c *Client) Symbol(symbol string) (interface{}, error) {
+func (c *Client) Symbol(symbol string) (Symbol, error) {
 	path := path.Join("public/symbol", symbol)
 	req, err := c.newRequest("GET", path, nil)
 
 	if err != nil {
-		return nil, err
+		return Symbol{}, err
 	}
 	var res Symbol
-	resp, err := c.do(req, res)
+	body, err := c.do(req)
+	err = json.Unmarshal(body, &res)
 
 	if err != nil {
-		return nil, err
+		return Symbol{}, err
 	}
 
-	return resp, err
+	return res, err
 }
 
-func (c *Client) Currencies() (interface{}, error) {
+func (c *Client) Currencies() ([]Currency, error) {
 	req, err := c.newRequest("GET", "public/currency", nil)
 
 	if err != nil {
@@ -83,33 +86,33 @@ func (c *Client) Currencies() (interface{}, error) {
 
 	var res []Currency
 	///var resp *http.Response
-	resp, err := c.do(req, res)
-	//err = json.NewDecoder(resp.Body).Decode(&res)
+	body, err := c.do(req)
+	err = json.Unmarshal(body, &res)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return resp, err
-
+	return res, err
 }
 
-func (c *Client) Currency(currency string) (interface{}, error) {
+func (c *Client) Currency(currency string) (Currency, error) {
 	path := path.Join("public/currency", currency)
 	req, err := c.newRequest("GET", path, nil)
 
 	if err != nil {
-		return nil, err
+		return Currency{}, err
 	}
 
 	var res Currency
-	resp, err := c.do(req, res)
+	body, err := c.do(req)
+	err = json.Unmarshal(body, &res)
 
 	if err != nil {
-		return nil, err
+		return Currency{}, err
 	}
 
-	return resp, err
+	return res, err
 
 }
 
@@ -139,8 +142,8 @@ func (c *Client) newRequest(method, path string, body interface{}) (*http.Reques
 	return req, nil
 }
 
-//func (c *Client) do(req *http.Request) (*http.Response, error) {
-func (c *Client) do(req *http.Request, v interface{}) (interface{}, error) {
+//func (c *Client) do(req *http.Request) ([]byte, error) {
+func (c *Client) do(req *http.Request) ([]byte, error) {
 	resp, err := c.HTTPClient.Do(req)
 	log.Println(resp.Body)
 	if err != nil {
@@ -149,7 +152,9 @@ func (c *Client) do(req *http.Request, v interface{}) (interface{}, error) {
 
 	defer resp.Body.Close()
 
-	err = json.NewDecoder(resp.Body).Decode(&v)
+	//err = json.NewDecoder(resp.Body).Decode(&v)
+	//return v, err
+	body, err := ioutil.ReadAll(resp.Body)
 
-	return v, err
+	return body, err
 }
